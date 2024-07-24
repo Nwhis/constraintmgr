@@ -89,7 +89,7 @@ if CLIENT then
         chat.AddText(net.ReadString())
     end)
 
-    local linecol = {
+    local linecol = { -- Default colors for some constraints
         Rope = Color(150,150,0),
         Elastic = Color(255,255,0),
         Weld = Color(0,0,255),
@@ -126,7 +126,7 @@ if CLIENT then
     local lasthover = nil
     local freeze = false
 
-    local function InitType(str)
+    local function InitType(str) -- Initial setup for constraint visuals
         if textwidth[str] then return end
         linecol[str] = linecol[str] or Color(255,0,200)
         local col = {ColorToHSV(linecol[str])}
@@ -144,7 +144,7 @@ if CLIENT then
 
     local constraints = {}
     local constraintGroups = {}
-    local function GroupConstraints()
+    local function GroupConstraints() -- Sort constraints into tables if they share the same entities and positions
         hovered, selected, selection = nil,nil,1
         constraintGroups = {}
         for k,v in ipairs(constraints) do
@@ -164,7 +164,7 @@ if CLIENT then
             end
         end
         local count = 0
-        for k,v in ipairs(constraints) do
+        for k,v in ipairs(constraints) do -- Calculate longest name for tooltip rendering
             if v.group then
                 local widest = constraintGroups[v.group][1].widest
                 if widest then
@@ -184,17 +184,13 @@ if CLIENT then
             v = g[1]
             v.size = {x = 15 + v.widest*8, y = 8 + #g*15}
         end
-        --MsgN(count," loose constraints")
-        --PrintTable(constraintGroups)
     end
 
-    net.Receive("constraintmgr_tbl",function()
+    net.Receive("constraintmgr_tbl",function() -- List of constraints from server
         local n = net.ReadUInt(8)
-        --print("received constraints",n)
         local tbl = {}
         target = net.ReadEntity()
         for i = 1,n do
-            --tbl[i] = {WPos1 = Vector(),WPos2 = Vector()}
             local id = net.ReadUInt(8)
             tbl[id] = {Index = id}
             tbl[id].Type = net.ReadString()
@@ -209,7 +205,7 @@ if CLIENT then
                 local idx = "LPos"..tostring(j)
                 if net.ReadBool() then
                     tbl[id][idx] = net.ReadVector()
-                else
+                else -- 3 floats to a vector, in case of worldpos (big vectors get messed up)
                     tbl[id][idx] = Vector(
                         net.ReadFloat(),
                         net.ReadFloat(),
@@ -222,26 +218,17 @@ if CLIENT then
         --PrintTable(tbl)
         GroupConstraints()
     end)
-    --[[net.Receive("constraintmgr_hover",function()
-        net.Start("constraintmgr_hover")
-        net.WriteUInt(hovered or 0,8)
-        net.SendToServer()
-    end)]]
 
     local function IsValidW(ent)
         if ent == game.GetWorld() then return true end
         return IsValid(ent)
     end
+
     function TOOL:SetStage(stage) timer.Create("setstage",0.02,1,function() self._stage = stage end) end
-    function TOOL:GetStage() return self._stage or 0 end
-    hook.Add("Think","constraintmgr_think",function()
+    function TOOL:GetStage() return self._stage or 0 end -- Override clientside Stage functions (they do nothing)
+
+    hook.Add("Think","constraintmgr_think",function() -- Calculating constraint worldpos and relative tooltip positions
         if #constraints == 0 then return end
-        --[[for k,v in ipairs(constraints) do
-            if not IsValidW(v.Ent1) or not IsValidW(v.Ent2) then table.remove(constraints,k) break end
-            v.WPos1 = (v.Ent1:IsWorld() and v.LPos1 == Vector()) and v.Ent2:LocalToWorld(Vector(0,0,-32)) or v.Ent1:LocalToWorld(v.LPos1)
-            v.WPos2 = (v.Ent2:IsWorld() and v.LPos2 == Vector()) and v.Ent1:LocalToWorld(Vector(0,0,-32)) or v.Ent2:LocalToWorld(v.LPos2)
-            v.WPos = ((v.WPos1 + v.WPos2)*0.5)
-        end]]
         for k,g in ipairs(constraintGroups) do
             if not freeze or not v.WPos1 then
                 for l,v in ipairs(g) do
@@ -260,9 +247,8 @@ if CLIENT then
                 end
             end
             v.mins = v.mid and {x=v.mid.x-v.size.x*0.5,y=v.mid.y-v.size.y*0.5} or {x=9999,y=9999}
-            --local mins = {x = pos.x - size.x/2, y = pos.y - size.y/2}
             v.maxs = {x = v.mins.x + v.size.x, y = v.mins.y + v.size.y}
-            if tool:GetClientBool("overlap") then continue end
+            if tool:GetClientBool("overlap") then continue end -- Skip overlap checking
             v.movedr = 0
             v.movedl = 0
             for i = 1,#constraintGroups*0.5 do
@@ -312,7 +298,7 @@ if CLIENT then
         if thin then render.DrawLine(pos1,pos2,c) end
     end
     local function CalcScale(l) return l and (0.1 + ((math.min(l,512)*1)^0.8)*0.01) or 1 end
-    hook.Add("PreDrawEffects","constraintmgr_render3d",function()
+    hook.Add("PreDrawEffects","constraintmgr_render3d",function() -- Render lines/beams
         if #constraints == 0 then return end
         local scale = 1
         for k,v in ipairs(constraintGroups) do
@@ -320,13 +306,6 @@ if CLIENT then
             scale = CalcScale(v[1].Length)
             for l,b in ipairs(v) do
                 if not b.WPos1 then continue end
-                --[[local c = (selection == l and hovered == k) and ((CurTime()%1 < 0.5) and col.selected0 or col.selected1) or linecol[b.Type]
-                render.SetColorMaterialIgnoreZ()
-                render.StartBeam(2)
-                render.AddBeam(b.WPos1,0.3*(1+(n-l)*2)*scale,0,c)
-                render.AddBeam(b.WPos2,1*(1+(n-l)*2)*scale,0,c)
-                render.EndBeam()
-                if l == n then render.DrawLine(b.WPos1,b.WPos2,c) end]]
                 DrawBeam(b.WPos1,b.WPos2,linecol[b.Type],scale*(1+(n-l)*2),l==1)
             end
         end
@@ -338,7 +317,7 @@ if CLIENT then
         end
     end)
     local scr,cur,center = Vector(),Vector(),Vector()
-    hook.Add("PostDrawHUD","constraintmgr_renderhud",function()
+    hook.Add("PostDrawHUD","constraintmgr_renderhud",function() -- Render tooltips
         if #constraints == 0 then
             if lasthover then
                 tool:SetStage(0)
@@ -370,7 +349,7 @@ if CLIENT then
             if not v.Ent1:IsWorld() and not v.Ent2:IsWorld() then continue end
             if not v.WPos1 or not v.WPos2 then return end
             local tp = v.Ent1:IsWorld() and v.WPos1:ToScreen() or v.WPos2:ToScreen()
-            --draw.RoundedBox(0,tp.x-9,tp.y-9,19,18,Color(100,100,100,150))
+            --draw.RoundedBox(0,tp.x-9,tp.y-9,19,18,Color(100,100,100,150)) -- Draw a box around the W
             --draw.RoundedBox(0,tp.x-8,tp.y-8,17,16,Color(0,0,0,200))
             draw.SimpleTextOutlined("W","TargetID",tp.x-7,tp.y-12,linecol[v.Type],TEXT_ALIGN_LEFT,TEXT_ALIGN_TOP,2,col.black)
         end
@@ -398,7 +377,7 @@ if CLIENT then
         end
     end)
     local window
-    local function Inspect(id)
+    local function Inspect(id) -- Popup window with constraint info
         const = constraints[id]
         if not const then return end
         if const.Type == "Parent" or const.Type == "Child" then return end
@@ -409,8 +388,7 @@ if CLIENT then
         window.OnRemove = function() hook.Remove("PreDrawHalos","constraintmgr_model_halo") print("removed") end
         local sw = ScrW()
         local sh = ScrH()
-        --sw,sh = 640,480
-        window:SetSize(280 + sw*0.08,360 + sh*0.2)
+        window:SetSize(280 + sw*0.08,360 + sh*0.2) -- 480p-friendly! :)
         window:SetSizable(true)
         window:Center()
         window:MakePopup()
@@ -450,7 +428,7 @@ if CLIENT then
                 items[k].entry:SetWidth(215 + sw*0.012)
                 items[k].entry.AllowInput = ReturnTrue
                 items[k].entry:Dock(RIGHT)
-                if type(v) == "Entity" and IsValid(v) then
+                if type(v) == "Entity" and IsValid(v) then -- Icon for props
                     local model = v:GetModel() or ""
                     if util.IsValidProp(model) then
                         items[k].icon = items[k].entry:Add("SpawnIcon")
@@ -460,7 +438,7 @@ if CLIENT then
                         items[k].icon:Dock(RIGHT)
                         items[k].icon:SetTooltip("[Click to copy] "..model)
                         items[k].icon._itemindex = k
-                        items[k].icon.DragMousePress = function(self,code)
+                        items[k].icon.DragMousePress = function(self,code) -- Copy model to clipboard
                             if code ~= MOUSE_LEFT then return end
                             SetClipboardText(model)
                             if copied then copied:Remove() end
@@ -470,7 +448,7 @@ if CLIENT then
                         end
                     end
                 end
-                if k == "material" then
+                if k == "material" then -- Icon for rope material
                     items[k].icon = items[k].entry:Add("DImage")
                     items[k].icon:SetMaterial(v)
                     items[k].icon:SetWidth(16)
@@ -481,7 +459,7 @@ if CLIENT then
                     items[k].entry:SetTooltip("[Serverside entity]")
                 end
             end
-            hook.Add("PreDrawHalos","constraintmgr_model_halo",function()
+            hook.Add("PreDrawHalos","constraintmgr_model_halo",function() -- Draw halo on hovered prop model
                 for k,v in pairs(items) do
                     if not v.icon then continue end
                     if v.icon:IsHovered() then
@@ -494,40 +472,39 @@ if CLIENT then
         
         
     end
-    hook.Add("PlayerBindPress","constraintmgr_bind",function(ply,bind,pressed)
-        if IsFirstTimePredicted() then return end
+    hook.Add("PlayerBindPress","constraintmgr_bind",function(ply,bind,pressed) -- Detect clicks/scrolls
+        if IsFirstTimePredicted() then return end -- Seems to break stuff if you check for (not IsFirstTimePredicted())
         if not toolactive then return end
         if not pressed then return end
-        if hovered then
-            if bind == "+attack" then
-                if #constraintGroups[hovered] == 1 or selection == 0 then
-                    selection = 1
-                end
-                if tool:GetClientBool("sound") then
-                    local t = constraintGroups[hovered][selection].Type
-                    LocalPlayer():EmitSound((t == "Parent" or t == "Child") and "buttons/lightswitch2.wav" or "buttons/button9.wav",nil,100,0.5)
-                end
-                Inspect(constraintGroups[hovered][selection].Index)
-                return true
+        if not hovered then return end
+        if bind == "+attack" then
+            if #constraintGroups[hovered] == 1 or selection == 0 then
+                selection = 1
             end
-            local scroll
-            if bind == "invnext" then scroll = 1 elseif bind == "invprev" then scroll = -1 end
-            if scroll then
-                if tool:GetClientBool("sound") then LocalPlayer():EmitSound("weapons/pistol/pistol_empty.wav",nil,120,0.3) end
-                selection = selection + scroll
-                if selection > #constraintGroups[hovered] then selection = 1 end
-                if selection < 1 then selection = #constraintGroups[hovered] end
-                return true
+            if tool:GetClientBool("sound") then
+                local t = constraintGroups[hovered][selection].Type
+                LocalPlayer():EmitSound((t == "Parent" or t == "Child") and "buttons/lightswitch2.wav" or "buttons/button9.wav",nil,100,0.5)
             end
-            if bind == "+reload" then
-                net.Start("constraintmgr_remove")
-                net.WriteUInt(constraintGroups[hovered][selection].Index,8)
-                net.SendToServer()
-                LocalPlayer():EmitSound("buttons/button15.wav",nil,100,0.8)
-                if #constraintGroups[hovered] <= 1 then hovered = nil end
-                --tool:Reload({success = true})
-                return false
-            end
+            Inspect(constraintGroups[hovered][selection].Index)
+            return true
+        end
+        local scroll
+        if bind == "invnext" then scroll = 1 elseif bind == "invprev" then scroll = -1 end
+        if scroll then
+            if tool:GetClientBool("sound") then LocalPlayer():EmitSound("weapons/pistol/pistol_empty.wav",nil,120,0.3) end
+            selection = selection + scroll
+            if selection > #constraintGroups[hovered] then selection = 1 end
+            if selection < 1 then selection = #constraintGroups[hovered] end
+            return true
+        end
+        if bind == "+reload" then
+            net.Start("constraintmgr_remove")
+            net.WriteUInt(constraintGroups[hovered][selection].Index,8)
+            net.SendToServer()
+            LocalPlayer():EmitSound("buttons/button15.wav",nil,100,0.8)
+            if #constraintGroups[hovered] <= 1 then hovered = nil end
+            --tool:Reload({success = true})
+            return false
         end
     end)
     hook.Add("KeyPress","constraintmgr_keypress",function(ply,key)
@@ -550,7 +527,7 @@ function TOOL:Clear()
     target = nil
     hook.Remove("constraintmgr_undo")
 end
-function TOOL:CalcConstraints(ent)
+function TOOL:CalcConstraints(ent) -- Get table of constraints, and include parent/child relations
     if not IsValid(ent) then self:Clear() return {},0,0 end
     local tbl = constraint.GetTable(ent)
     local numconst = #tbl
@@ -610,9 +587,9 @@ if SERVER then
     end
     SendTableSingle = function(ply,tbl)
         net.Start("constraintmgr_tbl_single")
-        for k,v in pairs(tbl) do
+        for k,v in pairs(tbl) do -- Try to trim down unneccesary data
             if type(v) == "table" or type(v) == "function" then tbl[k] = nil end
-            if k == "Constraint" then tbl[k] = tostring(v) end
+            if k == "Constraint" or type(v) == "Vector" or type(v) == "Angle" then tbl[k] = tostring(v) end
         end
         net.WriteTable(tbl)
         net.Send(ply)
@@ -624,16 +601,20 @@ if SERVER then
         local c = net.ReadUInt(8)
         --print("remove",constraints[c].Type,c)
         c = constraints[c]
-        if c.Type == "Child" then
-            c.Ent2:SetParent()
-        elseif c.Type == "Parent" then
-            c.Ent1:SetParent()
-        else
-            SafeRemoveEntity(c.Constraint)
+        if c then
+            if c.Type == "Child" then
+                c.Ent2:SetParent()
+            elseif c.Type == "Parent" then
+                c.Ent1:SetParent()
+            else
+                SafeRemoveEntity(c.Constraint)
+            end
         end
-        timer.Create("removed",0.1,1,function() SendTable(ply,tool:CalcConstraints(target)) end)
+        timer.Create("removed",0.1,1,function() -- Wait a bit in case it gets spammed
+            SendTable(ply,tool:CalcConstraints(target))
+        end)
     end)
-    net.Receive("constraintmgr_tbl",function(_,ply)
+    net.Receive("constraintmgr_tbl",function(_,ply) -- Requested update from client
         SendTable(ply,tool:CalcConstraints(target))
     end)
     net.Receive("constraintmgr_clear",function(_,ply)
