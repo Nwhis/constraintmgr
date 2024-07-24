@@ -385,7 +385,7 @@ if CLIENT then
             window:Remove()
         end
         window = vgui.Create("DFrame")
-        window.OnRemove = function() hook.Remove("PreDrawHalos","constraintmgr_model_halo") print("removed") end
+        window.OnRemove = function() hook.Remove("PreDrawHalos","constraintmgr_model_halo") end
         local sw = ScrW()
         local sh = ScrH()
         window:SetSize(280 + sw*0.08,360 + sh*0.2) -- 480p-friendly! :)
@@ -599,7 +599,6 @@ if SERVER then
     end)
     net.Receive("constraintmgr_remove",function(_,ply)
         local c = net.ReadUInt(8)
-        --print("remove",constraints[c].Type,c)
         c = constraints[c]
         if c then
             if c.Type == "Child" then
