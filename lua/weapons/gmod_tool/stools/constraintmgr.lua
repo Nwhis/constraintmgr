@@ -45,6 +45,7 @@ if CLIENT then
         local checkcam
         panel:CheckBox(t.."var.persist","constraintmgr_persist").OnChange = function(_,val)
             checkcam:SetEnabled(val)
+            if not tool then return end
             if not val and not toolactive then
                 timer.Create("wait_persist",0.02,1,function()
                     net.Start("constraintmgr_clear")
@@ -134,8 +135,9 @@ if CLIENT then
 
         local width = 0
         for c in str:gmatch(".") do
-            width = width + ((string.find(c,"[ .Iijlt]",1) == nil) and 1 or 0.4)
-            width = width + ((string.find(c,"[AW]",1) == nil) and 0.2 or 0)
+            width = width + ((string.find(c,"[ .Iijl]",1) == nil) and 1 or 0.5)
+            width = width + ((string.find(c,"[A-Zdp]",1) == nil) and 0 or 0.25)
+            width = width + ((string.find(c,"[Ww]",1) == nil) and 0 or 0.55)
         end
         textwidth[str] = width
     end
@@ -182,7 +184,7 @@ if CLIENT then
         end
         for k,g in ipairs(constraintGroups) do
             v = g[1]
-            v.size = {x = 15 + v.widest*8, y = 8 + #g*15}
+            v.size = {x = 10 + v.widest*9, y = 8 + #g*15}
         end
     end
 
@@ -194,6 +196,7 @@ if CLIENT then
             local id = net.ReadUInt(8)
             tbl[id] = {Index = id}
             tbl[id].Type = net.ReadString()
+            --tbl[id].Type = "Wewew"
             InitType(tbl[id].Type)
             for j=1,2 do
                 tbl[id]["Ent"..tostring(j)] = net.ReadEntity()
@@ -317,7 +320,7 @@ if CLIENT then
         end
     end)
     local scr,cur,center = Vector(),Vector(),Vector()
-    hook.Add("PostDrawHUD","constraintmgr_renderhud",function() -- Render tooltips
+    hook.Add("HUDPaint","constraintmgr_renderhud",function() -- Render tooltips
         if #constraints == 0 then
             if lasthover then
                 tool:SetStage(0)
@@ -351,11 +354,13 @@ if CLIENT then
             local tp = v.Ent1:IsWorld() and v.WPos1:ToScreen() or v.WPos2:ToScreen()
             --draw.RoundedBox(0,tp.x-9,tp.y-9,19,18,Color(100,100,100,150)) -- Draw a box around the W
             --draw.RoundedBox(0,tp.x-8,tp.y-8,17,16,Color(0,0,0,200))
-            draw.SimpleTextOutlined("W","TargetID",tp.x-7,tp.y-12,linecol[v.Type],TEXT_ALIGN_LEFT,TEXT_ALIGN_TOP,2,col.black)
+            draw.SimpleTextOutlined("W","ChatFont",tp.x-7,tp.y-12,linecol[v.Type],TEXT_ALIGN_LEFT,TEXT_ALIGN_TOP,2,col.black_220)
         end
         for k,v in ipairs(constraintGroups) do
             local mins = v[1].mins
             if not mins then continue end
+            --mins.x = math.floor(mins.x)
+            --mins.y = math.floor(mins.y)
             local size = v[1].size
             v[1].render = true
             if tool:GetClientBool("cull") then
@@ -368,11 +373,11 @@ if CLIENT then
             draw.RoundedBox(0,mins.x+2,mins.y+2,size.x - 4,size.y - 4,(hovered == k) and col.black_220 or col.black_half)
             for l,b in ipairs(v) do
                 local c = (selection == l and hovered == k) and ((CurTime()%1 < 0.5) and col.selected0 or col.selected1) or textcol[b.Type]
-                draw.TextShadow(
+                --[[draw.TextShadow(
                     {text=b.Type,font="TargetID",pos={mins.x+4,mins.y + l*15 - 16},xalign=TEXT_ALIGN_LEFT,yalign=TEXT_ALIGN_TOP,color=col.black},
                     1,255
-                )
-                draw.SimpleText(b.Type,"TargetID",mins.x + 4,mins.y + l*15 - 16,c,TEXT_ALIGN_LEFT,TEXT_ALIGN_TOP,1,col.black)
+                )]]
+                draw.SimpleTextOutlined(b.Type,"ChatFont",mins.x + 4,mins.y + l*15 - 14,c,TEXT_ALIGN_LEFT,TEXT_ALIGN_TOP,1,col.black_half)
             end
         end
     end)
@@ -614,6 +619,7 @@ if SERVER then
         end)
     end)
     net.Receive("constraintmgr_tbl",function(_,ply) -- Requested update from client
+        if not tool then return end
         SendTable(ply,tool:CalcConstraints(target))
     end)
     net.Receive("constraintmgr_clear",function(_,ply)
