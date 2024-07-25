@@ -3,11 +3,11 @@ TOOL.Name = "#tool.constraintmgr.name"
 
 TOOL.ClientConVar["persist"] = 0
 TOOL.ClientConVar["cam_nolabels"] = 1
-TOOL.ClientConVar["parents"] = 1
+TOOL.ClientConVar["parents"] = 0
+TOOL.ClientConVar["parents_nophys"] = 0
 TOOL.ClientConVar["sound"] = 1
 TOOL.ClientConVar["cull"] = 1
 TOOL.ClientConVar["overlap"] = 0
-TOOL.ClientConVar["parents_nophys"] = 0
 TOOL.ClientConVar["scale_line"] = 1
 
 local toolactive = false
