@@ -2,7 +2,6 @@ TOOL.Category = "Constraints"
 TOOL.Name = "#tool.constraintmgr.name"
 
 TOOL.ClientConVar["persist"] = 0
-TOOL.ClientConVar["cam_nolabels"] = 1
 TOOL.ClientConVar["parents"] = 0
 TOOL.ClientConVar["parents_nophys"] = 0
 TOOL.ClientConVar["sound"] = 1
@@ -10,8 +9,12 @@ TOOL.ClientConVar["cull"] = 1
 TOOL.ClientConVar["overlap"] = 0
 TOOL.ClientConVar["scale_line"] = 1
 
-local toolactive = false
+local Think,HUDPaint,PreDrawEffects,PlayerBindPress,KeyPress,KeyRelease -- client hook functions
+
+local function GetPlayerBool(ply,property) return ply:GetInfoNum("constraintmgr_"..property,0) > 0 end
+
 local tool
+local toolactive = false
 
 if CLIENT then
     TOOL.Information = {
@@ -31,7 +34,7 @@ if CLIENT then
     language.Add(t.."alt","Alt: Freeze display")
 
     language.Add(t.."var.persist","Keep constraints visible when switching tools")
-    language.Add(t.."var.cam_nolabels","Hide tooltips while using the camera")
+    --language.Add(t.."var.cam_nolabels","Hide tooltips while using the camera")
     language.Add(t.."var.parents","Show parent/child relations as constraints")
     language.Add(t.."var.parents_nophys","Show children without physics")
     language.Add(t.."var.sound","Enable tool sounds")
@@ -40,24 +43,23 @@ if CLIENT then
     language.Add(t.."var.scale_line","Line scale")
 
     function TOOL.BuildCPanel(panel)
+        local tool = LocalPlayer():GetTool("constraintmgr")
         t = "#"..t
         local c
-        local checkcam
+        --local checkcam
         panel:CheckBox(t.."var.persist","constraintmgr_persist").OnChange = function(_,val)
-            checkcam:SetEnabled(val)
-            if not tool then return end
+            --checkcam:SetEnabled(val)
             if not val and not toolactive then
                 timer.Create("wait_persist",0.02,1,function()
                     net.Start("constraintmgr_clear")
                     net.SendToServer()
-                    tool:Holster()
+                    if tool then tool:Holster() end
                 end)
             end
         end
-        checkcam = panel:CheckBox(t.."var.cam_nolabels","constraintmgr_cam_nolabels")
-        checkcam:SetTooltip("Great for screenshots!")
-
-        c = vgui.Create("DPanel",panel) c:SetHeight(1) panel:AddItem(c)
+        --checkcam = panel:CheckBox(t.."var.cam_nolabels","constraintmgr_cam_nolabels")
+        --checkcam:SetTooltip("Great for screenshots!")
+        --c = vgui.Create("DPanel",panel) c:SetHeight(1) panel:AddItem(c)
 
         local checkno
         c = panel:CheckBox(t.."var.parents","constraintmgr_parents")
@@ -146,6 +148,11 @@ if CLIENT then
 
     local constraints = {}
     local constraintGroups = {}
+    
+    local scr,cur,center = Vector(),Vector(),Vector()
+
+    local window
+
     local function GroupConstraints() -- Sort constraints into tables if they share the same entities and positions
         hovered, selected, selection = nil,nil,1
         constraintGroups = {}
@@ -191,12 +198,10 @@ if CLIENT then
     net.Receive("constraintmgr_tbl",function() -- List of constraints from server
         local n = net.ReadUInt(8)
         local tbl = {}
-        target = net.ReadEntity()
         for i = 1,n do
             local id = net.ReadUInt(8)
             tbl[id] = {Index = id}
             tbl[id].Type = net.ReadString()
-            --tbl[id].Type = "Wewew"
             InitType(tbl[id].Type)
             for j=1,2 do
                 tbl[id]["Ent"..tostring(j)] = net.ReadEntity()
@@ -230,7 +235,7 @@ if CLIENT then
     function TOOL:SetStage(stage) timer.Create("setstage",0.02,1,function() self._stage = stage end) end
     function TOOL:GetStage() return self._stage or 0 end -- Override clientside Stage functions (they do nothing)
 
-    hook.Add("Think","constraintmgr_think",function() -- Calculating constraint worldpos and relative tooltip positions
+    Think = function() -- Calculating constraint worldpos and relative tooltip positions
         if #constraints == 0 then return end
         for k,g in ipairs(constraintGroups) do
             if not freeze or not v.WPos1 then
@@ -251,7 +256,7 @@ if CLIENT then
             end
             v.mins = v.mid and {x=v.mid.x-v.size.x*0.5,y=v.mid.y-v.size.y*0.5} or {x=9999,y=9999}
             v.maxs = {x = v.mins.x + v.size.x, y = v.mins.y + v.size.y}
-            if tool:GetClientBool("overlap") then continue end -- Skip overlap checking
+            if GetPlayerBool(LocalPlayer(),"overlap") then continue end -- Skip overlap checking
             v.movedr = 0
             v.movedl = 0
             for i = 1,#constraintGroups*0.5 do
@@ -288,9 +293,10 @@ if CLIENT then
                 end
             end
         end
-    end)
+    end
+
     local function DrawBeam(pos1,pos2,c,scale,thin)
-        scale = scale*tool:GetClientNumber("scale_line",0)
+        scale = scale*LocalPlayer():GetInfoNum("constraintmgr_scale_line",0)
         if scale > 0 then
             render.SetColorMaterialIgnoreZ()
             render.StartBeam(2)
@@ -300,8 +306,10 @@ if CLIENT then
         end
         if thin then render.DrawLine(pos1,pos2,c) end
     end
+
     local function CalcScale(l) return l and (0.1 + ((math.min(l,512)*1)^0.8)*0.01) or 1 end
-    hook.Add("PreDrawEffects","constraintmgr_render3d",function() -- Render lines/beams
+
+    PreDrawEffects = function() -- Render lines/beams
         if #constraints == 0 then return end
         local scale = 1
         for k,v in ipairs(constraintGroups) do
@@ -318,9 +326,10 @@ if CLIENT then
             scale = CalcScale(v.Length)
             DrawBeam(sel.WPos1,sel.WPos2,(CurTime()%1 < 0.5) and col.selected0 or col.selected1,scale*(1+(#constraintGroups[hovered]-selection)*2),true)
         end
-    end)
-    local scr,cur,center = Vector(),Vector(),Vector()
-    hook.Add("HUDPaint","constraintmgr_renderhud",function() -- Render tooltips
+    end
+
+    HUDPaint = function() -- Render tooltips
+        if not tool then return end
         if #constraints == 0 then
             if lasthover then
                 tool:SetStage(0)
@@ -328,8 +337,6 @@ if CLIENT then
             end
             return
         end
-        if tool:GetClientBool("cam_nolabels") and LocalPlayer():GetActiveWeapon():GetClass() == "gmod_camera" then return end
-
         scr.x = ScrW() scr.y = ScrH()
         cur.x = ScrW()*0.5 cur.y = ScrH()*0.5
         if lasthover ~= hovered then 
@@ -363,7 +370,7 @@ if CLIENT then
             --mins.y = math.floor(mins.y)
             local size = v[1].size
             v[1].render = true
-            if tool:GetClientBool("cull") then
+            if GetPlayerBool(LocalPlayer(),"cull") then
                 local s = v[1].WPos:ToScreen()
                 center.x = s.x--mins.x + size.x*0.5
                 center.y = s.y--mins.y + size.y*0.5
@@ -380,8 +387,8 @@ if CLIENT then
                 draw.SimpleTextOutlined(b.Type,"ChatFont",mins.x + 4,mins.y + l*15 - 14,c,TEXT_ALIGN_LEFT,TEXT_ALIGN_TOP,1,col.black_half)
             end
         end
-    end)
-    local window
+    end
+
     local function Inspect(id) -- Popup window with constraint info
         const = constraints[id]
         if not const then return end
@@ -449,7 +456,7 @@ if CLIENT then
                             if copied then copied:Remove() end
                             copied = self:Add("DPanelOverlay")
                             copied:SetColor(col.green)
-                            if tool:GetClientBool("sound") then LocalPlayer():EmitSound("buttons/button14.wav",nil,120,0.3) end
+                            if GetPlayerBool(LocalPlayer(),"sound") then LocalPlayer():EmitSound("buttons/button14.wav",nil,120,0.3) end
                         end
                     end
                 end
@@ -477,7 +484,8 @@ if CLIENT then
         
         
     end
-    hook.Add("PlayerBindPress","constraintmgr_bind",function(ply,bind,pressed) -- Detect clicks/scrolls
+
+    PlayerBindPress = function(ply,bind,pressed) -- Detect clicks/scrolls
         if IsFirstTimePredicted() then return end -- Seems to break stuff if you check for (not IsFirstTimePredicted())
         if not toolactive then return end
         if not pressed then return end
@@ -486,7 +494,7 @@ if CLIENT then
             if #constraintGroups[hovered] == 1 or selection == 0 then
                 selection = 1
             end
-            if tool:GetClientBool("sound") then
+            if GetPlayerBool(LocalPlayer(),"sound") then
                 local t = constraintGroups[hovered][selection].Type
                 LocalPlayer():EmitSound((t == "Parent" or t == "Child") and "buttons/lightswitch2.wav" or "buttons/button9.wav",nil,100,0.5)
             end
@@ -496,7 +504,7 @@ if CLIENT then
         local scroll
         if bind == "invnext" then scroll = 1 elseif bind == "invprev" then scroll = -1 end
         if scroll then
-            if tool:GetClientBool("sound") then LocalPlayer():EmitSound("weapons/pistol/pistol_empty.wav",nil,120,0.3) end
+            if GetPlayerBool(LocalPlayer(),"sound") then LocalPlayer():EmitSound("weapons/pistol/pistol_empty.wav",nil,120,0.3) end
             selection = selection + scroll
             if selection > #constraintGroups[hovered] then selection = 1 end
             if selection < 1 then selection = #constraintGroups[hovered] end
@@ -511,43 +519,41 @@ if CLIENT then
             --tool:Reload({success = true})
             return false
         end
-    end)
-    hook.Add("KeyPress","constraintmgr_keypress",function(ply,key)
+    end
+    KeyPress = function(ply,key)
         if not toolactive then return end
         if key == IN_WALK then freeze = true end
-    end)
-    hook.Add("KeyRelease","constraintmgr_keyrelease",function(ply,key)
+    end
+    KeyRelease = function(ply,key)
         if not toolactive then return end
         if key == IN_WALK then freeze = false end
-    end)
+    end
 end
 
-local target
-local constraints = {}
 local Notify,SendTable,SendTableSingle
 function TOOL:Clear()
     self:ClearObjects()
     if CLIENT then return end
     SendTable(self:GetOwner(),{})
-    target = nil
-    hook.Remove("constraintmgr_undo")
+    hook.Remove("PreUndo","constraintmgr_undo_"..self:GetOwner():UserID())
 end
-function TOOL:CalcConstraints(ent) -- Get table of constraints, and include parent/child relations
-    if not IsValid(ent) then self:Clear() return {},0,0 end
+local function CalcConstraints(ply,ent) -- Get table of constraints, and include parent/child relations
+    if not IsValid(ent) then ply:GetTool("constraintmgr"):Clear() return {},0,0 end
     local tbl = constraint.GetTable(ent)
     local numconst = #tbl
     local numchild = 0
-    if self:GetClientBool("parents") then
+    if GetPlayerBool(ply,"parents") then
         if IsValid(ent:GetParent()) then table.insert(tbl,{Type = "Parent",Ent1 = ent,Ent2 = ent:GetParent()}) end
+        local nophys = GetPlayerBool(ply,"parents_nophys")
         for k,v in pairs(ent:GetChildren()) do
             if not IsValid(v) then continue end
             if v:GetParent() ~= ent then continue end
-            if not IsValid(v:GetPhysicsObject()) and not self:GetClientBool("parents_nophys") then continue end
+            if not IsValid(v:GetPhysicsObject()) and not nophys then continue end
             numchild = numchild + 1
             table.insert(tbl,{Type = "Child",Ent1 = ent,Ent2 = v})
         end
     end
-    constraints = tbl
+    ply.constraintmgr_selected = tbl
     return tbl,numconst,numchild
 end
 if SERVER then
@@ -564,7 +570,7 @@ if SERVER then
     SendTable = function(ply,tbl)
         net.Start("constraintmgr_tbl")
         net.WriteUInt(math.min(#tbl,255),8)
-        net.WriteEntity(target)
+        --net.WriteEntity(ply:GetTool("constraintmgr"):GetEnt(1))
         for k, v in ipairs(tbl) do
             if not v.Type then continue end
             net.WriteUInt(k,8)
@@ -600,11 +606,11 @@ if SERVER then
         net.Send(ply)
     end
     net.Receive("constraintmgr_tbl_single",function(_,ply)
-        SendTableSingle(ply,constraint.GetTable(target)[net.ReadUInt(8)])
+        SendTableSingle(ply,constraint.GetTable(ply:GetTool("constraintmgr"):GetEnt(1))[net.ReadUInt(8)])
     end)
     net.Receive("constraintmgr_remove",function(_,ply)
         local c = net.ReadUInt(8)
-        c = constraints[c]
+        c = ply.constraintmgr_selected[c]
         if c then
             if c.Type == "Child" then
                 c.Ent2:SetParent()
@@ -614,24 +620,23 @@ if SERVER then
                 SafeRemoveEntity(c.Constraint)
             end
         end
-        timer.Create("removed",0.1,1,function() -- Wait a bit in case it gets spammed
-            SendTable(ply,tool:CalcConstraints(target))
+        timer.Create("removed"..ply:UserID(),0.1,1,function() -- Wait a bit in case it gets spammed
+            SendTable(ply,CalcConstraints(ply,ply:GetTool("constraintmgr"):GetEnt(1)))
         end)
     end)
     net.Receive("constraintmgr_tbl",function(_,ply) -- Requested update from client
-        if not tool then return end
-        SendTable(ply,tool:CalcConstraints(target))
+        SendTable(ply,CalcConstraints(ply,ply:GetTool("constraintmgr"):GetEnt(1)))
     end)
     net.Receive("constraintmgr_clear",function(_,ply)
-        tool:Holster()
+        ply:GetTool("constraintmgr"):Holster()
     end)
 end
 
 
 
 function TOOL:LeftClick(trace)
-    toolactive = true
     local ent = trace.Entity
+    local ply = self:GetOwner()
     if not IsValid(ent) then
         if ent:IsWorld() then
             self:Clear()
@@ -641,22 +646,26 @@ function TOOL:LeftClick(trace)
     if ent:IsPlayer() then return false end
     if CLIENT then return true end
     if not IsValid(ent:GetPhysicsObject()) then return false end
-    target = ent
-    local tbl,con,chi = self:CalcConstraints(ent)
-    Notify(self:GetOwner(),tostring(ent).." has "..tostring(con).." constraints"..(chi > 0 and " and "..tostring(chi).." child"..(chi == 1 and "" or "ren") or ""))
+    self:SetObject(1,ent,Vector(),ent:GetPhysicsObject(),0,Vector())
+    local tbl,con,chi = CalcConstraints(ply,ent)
+    Notify(ply,tostring(ent).." has "..tostring(con).." constraints"..(chi > 0 and " and "..tostring(chi).." child"..(chi == 1 and "" or "ren") or ""))
     if #tbl == 0 then
         self:Clear()
         return true
     end
-    SendTable(self:GetOwner(),tbl)
-    hook.Add("PreUndo","constraintmgr_undo",function(tbl)
+    SendTable(ply,tbl)
+    hook.Add("PreUndo","constraintmgr_undo_"..ply:UserID(),function(tbl)
         if not tbl then return end
+        if tbl.Owner ~= ply then return end
+        local send
         for k,v in ipairs(tbl.Entities) do
             if not IsValid(v) or v:IsConstraint() or v.Type then
-                timer.Create("constraintmgr_undo",0.1,1,function()
-                    SendTable(tbl.Owner,self:CalcConstraints(ent))
-                end)
+                send = true
+                break
             end
+        end
+        if send then
+            timer.Create("undo_"..ply:UserID(),0.1,1,function() SendTable(tbl.Owner,CalcConstraints(ply,ent)) end)
         end
     end)
     return true
@@ -666,13 +675,31 @@ function TOOL:RightClick(trace)
     self:Clear()
     return true
 end
-function TOOL:Deploy() toolactive = true tool = self end
+function TOOL:Deploy()
+    if SERVER then return end
+    toolactive = true
+    tool = self
+    hook.Add("Think","constraintmgr_think",Think)
+    hook.Add("HUDPaint","constraintmgr_renderhud",HUDPaint)
+    hook.Add("PreDrawEffects","constraintmgr_render3d",PreDrawEffects)
+    hook.Add("PlayerBindPress","constraintmgr_bind",PlayerBindPress)
+    hook.Add("KeyPress","constraintmgr_keypress",KeyPress)
+    hook.Add("KeyRelease","constraintmgr_keyrelease",KeyRelease)
+end
 function TOOL:Holster()
-    toolactive = false
+    if CLIENT then
+        toolactive = false
+        hook.Remove("Think","constraintmgr_think")
+        hook.Remove("HUDPaint","constraintmgr_renderhud")
+        hook.Remove("PreDrawEffects","constraintmgr_render3d")
+        hook.Remove("PlayerBindPress","constraintmgr_bind")
+        hook.Remove("KeyPress","constraintmgr_keypress")
+        hook.Remove("KeyRelease","constraintmgr_keyrelease")
+    end
     if self:GetClientBool("persist") then return end
     self:Clear()
 end
 function TOOL:Reload(data)
-    if SERVER then return target and true or false end
+    if SERVER then return IsValid(self:GetEnt(1)) and true or false end
     --if data.success then return true end
 end
