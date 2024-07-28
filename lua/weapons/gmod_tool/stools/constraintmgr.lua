@@ -227,6 +227,12 @@ if CLIENT then
         GroupConstraints()
     end)
 
+    net.Receive("constraintmgr_active",function()
+        local a = net.ReadBool()
+        tool = LocalPlayer():GetTool("constraintmgr")
+        if a then tool:Deploy() else tool:Holster() end
+    end)
+
     local function IsValidW(ent)
         if ent == game.GetWorld() then return true end
         return IsValid(ent)
@@ -534,6 +540,7 @@ local Notify,SendTable,SendTableSingle
 function TOOL:Clear()
     self:ClearObjects()
     if CLIENT then return end
+    ply.constraintmgr_selected = nil
     SendTable(self:GetOwner(),{})
     hook.Remove("PreUndo","constraintmgr_undo_"..self:GetOwner():UserID())
 end
@@ -553,7 +560,7 @@ local function CalcConstraints(ply,ent) -- Get table of constraints, and include
             table.insert(tbl,{Type = "Child",Ent1 = ent,Ent2 = v})
         end
     end
-    ply.constraintmgr_selected = tbl
+    ply.constraintmgr_selected = tbl -- Cache the constraints on the player for later (for removing constraints)
     return tbl,numconst,numchild
 end
 if SERVER then
@@ -562,6 +569,7 @@ if SERVER then
     util.AddNetworkString("constraintmgr_tbl_single")
     util.AddNetworkString("constraintmgr_remove")
     util.AddNetworkString("constraintmgr_clear")
+    util.AddNetworkString("constraintmgr_active")
     Notify = function(ply,str)
         net.Start("constraintmgr_notify")
         net.WriteString(str)
@@ -676,7 +684,10 @@ function TOOL:RightClick(trace)
     return true
 end
 function TOOL:Deploy()
-    if SERVER then return end
+    if SERVER then -- fix for Deploy not getting called on client when switching tools
+        net.Start("constraintmgr_active") net.WriteBool(true) net.Send(self:GetOwner())
+        return
+    end
     toolactive = true
     tool = self
     hook.Add("Think","constraintmgr_think",Think)
@@ -687,6 +698,9 @@ function TOOL:Deploy()
     hook.Add("KeyRelease","constraintmgr_keyrelease",KeyRelease)
 end
 function TOOL:Holster()
+    if SERVER then -- fix for Holster not getting called on client when switching tools
+        net.Start("constraintmgr_active") net.WriteBool(false) net.Send(self:GetOwner())
+    end
     if CLIENT then
         toolactive = false
         hook.Remove("Think","constraintmgr_think")
