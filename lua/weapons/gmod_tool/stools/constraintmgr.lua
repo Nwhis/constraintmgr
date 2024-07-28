@@ -230,6 +230,7 @@ if CLIENT then
     net.Receive("constraintmgr_active",function()
         local a = net.ReadBool()
         tool = LocalPlayer():GetTool("constraintmgr")
+        print("forced update from server",a)
         if a then tool:Deploy() else tool:Holster() end
     end)
 
@@ -540,7 +541,7 @@ local Notify,SendTable,SendTableSingle
 function TOOL:Clear()
     self:ClearObjects()
     if CLIENT then return end
-    ply.constraintmgr_selected = nil
+    self:GetOwner().constraintmgr_selected = nil
     SendTable(self:GetOwner(),{})
     hook.Remove("PreUndo","constraintmgr_undo_"..self:GetOwner():UserID())
 end
@@ -686,7 +687,10 @@ end
 function TOOL:Deploy()
     if SERVER then -- fix for Deploy not getting called on client when switching tools
         net.Start("constraintmgr_active") net.WriteBool(true) net.Send(self:GetOwner())
+        print("server deploy")
         return
+    else
+        print("client deploy")
     end
     toolactive = true
     tool = self
@@ -700,8 +704,10 @@ end
 function TOOL:Holster()
     if SERVER then -- fix for Holster not getting called on client when switching tools
         net.Start("constraintmgr_active") net.WriteBool(false) net.Send(self:GetOwner())
+        print("server holster")
     end
     if CLIENT then
+        print("client holster")
         toolactive = false
         hook.Remove("Think","constraintmgr_think")
         hook.Remove("HUDPaint","constraintmgr_renderhud")
