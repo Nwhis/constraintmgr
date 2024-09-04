@@ -703,14 +703,16 @@ function TOOL:Holster()
     end
     if CLIENT then
         toolactive = false
-        hook.Remove("Think","constraintmgr_think")
-        hook.Remove("HUDPaint","constraintmgr_renderhud")
-        hook.Remove("PreDrawEffects","constraintmgr_render3d")
         hook.Remove("PlayerBindPress","constraintmgr_bind")
         hook.Remove("KeyPress","constraintmgr_keypress")
         hook.Remove("KeyRelease","constraintmgr_keyrelease")
     end
     if self:GetClientBool("persist") then return end
+    if CLIENT then
+        hook.Remove("Think","constraintmgr_think")
+        hook.Remove("HUDPaint","constraintmgr_renderhud")
+        hook.Remove("PreDrawEffects","constraintmgr_render3d")
+    end
     self:Clear()
 end
 function TOOL:Reload(data)
