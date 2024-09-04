@@ -230,6 +230,7 @@ if CLIENT then
     net.Receive("constraintmgr_active",function()
         local a = net.ReadBool()
         tool = LocalPlayer():GetTool("constraintmgr")
+        if not tool then return end
         if a then tool:Deploy() else tool:Holster() end
     end)
 
