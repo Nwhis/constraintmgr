@@ -11,6 +11,9 @@ TOOL.ClientConVar["scale_line"] = 1
 
 local Think
 
+local tool
+local toolactive = false
+
 if CLIENT then
     TOOL.Information = {
         {name = "left_0", stage = 0},
@@ -19,8 +22,6 @@ if CLIENT then
         {name = "reload", stage = 1},
         {name = "alt",icon = "icon16/control_pause.png"}
     }
-    local tool
-    local toolactive = false
     function TOOL.BuildCPanel(panel)
         tool = LocalPlayer():GetTool("constraintmgr")
         local t = "#tool.constraintmgr."
