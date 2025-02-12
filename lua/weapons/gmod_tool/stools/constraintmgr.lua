@@ -222,11 +222,11 @@ function TOOL:Holster(ply)
     end
     if CLIENT then
         toolactive = false
-        CMgr.StopRender()
+        CMgr.StopInput()
     end
     if not ply and self:GetClientBool("persist") then return end
     if CLIENT then
-        CMgr.StopInput()
+        CMgr.StopRender()
         hook.Remove("Think","constraintmgr_svthink")
     end
     self:Clear(ply)
