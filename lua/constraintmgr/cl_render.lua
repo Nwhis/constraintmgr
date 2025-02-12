@@ -328,7 +328,7 @@ local function LoadInspect(tbl)
         if type(v) == "boolean" or isfakebool then
             items[k].entry = items[k]:Add("DCheckBox")
             items[k].entry:SetChecked(tobool(v))
-            items[k].entry.OnChange = function(_,bVal) ModifiedEntry(items[k],isfakebool and (bVal ~= 0) or bVal) end
+            items[k].entry.OnChange = function(_,bVal) ModifiedEntry(items[k],isfakebool and (bVal == 0 and 0 or 1) or bVal) end
             items[k].entry:SetWidth(20)
             items[k].entry:Dock(RIGHT)
             continue
