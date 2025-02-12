@@ -5,6 +5,7 @@ CMgr_ConstraintGroups = {}
 CMgr_Hovered = nil
 CMgr_LastHover = 0
 CMgr_Selected = 0
+CMgr_Active = false
 
 local function GroupConstraints() -- Sort constraints into tables if they share the same entities and positions
     CMgr_Hovered, CMgr_Selected = nil,1

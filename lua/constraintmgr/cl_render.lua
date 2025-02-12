@@ -153,16 +153,26 @@ local PreDrawEffects = function() -- Render lines/beams
 end
 
 local HUDPaint = function() -- Render tooltips
-    scr.x = ScrW() scr.y = ScrH()
-    cur.x = ScrW() * 0.5 cur.y = ScrH() * 0.5
+    if #CMgr_Constraints == 0 then
+        if CMgr_LastHover then
+            --tool:SetStage(0)
+            CMgr_LastHover = nil
+        end
+        return
+    end
+    if CMgr_LastHover ~= CMgr_Hovered then
+        CMgr_Selected = 1
+        --if CMgr_Hovered then tool:SetStage(1) else tool:SetStage(0) end
+    end
     CMgr_LastHover = CMgr_Hovered
     CMgr_Hovered = nil
+    scr.x = ScrW() scr.y = ScrH()
+    cur.x,cur.y = input.GetCursorPos()
     for k,v in ipairs(CMgr_ConstraintGroups) do
         v = v[1]
         if not v.WPos then continue end
         v.mid = v.WPos:ToScreen()
-        if toolactive and
-        cur.x > v.mins.x and cur.x < v.maxs.x and
+        if CMgr_Active and cur.x > v.mins.x and cur.x < v.maxs.x and
         cur.y > v.mins.y and cur.y < v.maxs.y then
             CMgr_Hovered = k
         end
@@ -196,12 +206,12 @@ local HUDPaint = function() -- Render tooltips
 end
 
 function CMgr.StartRender()
-    hook.Add("Think","constraintmgr_think",Think)
+    hook.Add("Think","constraintmgr_renderthink",Think)
     hook.Add("HUDPaint","constraintmgr_renderhud",HUDPaint)
     hook.Add("PreDrawEffects","constraintmgr_render3d",PreDrawEffects)
 end
 function CMgr.StopRender()
-    hook.Remove("Think","constraintmgr_think")
+    hook.Remove("Think","constraintmgr_renderthink")
     hook.Remove("HUDPaint","constraintmgr_renderhud")
     hook.Remove("PreDrawEffects","constraintmgr_render3d")
 end

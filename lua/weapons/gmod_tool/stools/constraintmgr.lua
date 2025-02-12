@@ -12,7 +12,6 @@ TOOL.ClientConVar["scale_line"] = 1
 local Think
 
 local tool
-local toolactive = false
 
 if CLIENT then
     TOOL.Information = {
@@ -27,7 +26,7 @@ if CLIENT then
         local t = "#tool.constraintmgr."
         local c
         panel:CheckBox(t .. "var.persist","constraintmgr_persist").OnChange = function(_,val)
-            if not val and not toolactive then
+            if not val and not CMgr_Active then
                 timer.Create("wait_persist",0.02,1,function()
                     net.Start("constraintmgr_clear")
                     net.SendToServer()
@@ -66,7 +65,7 @@ if CLIENT then
     local function CMgrActive(self)
         local a = net.ReadBool()
         if not LocalPlayer() then timer.Simple(5,CMgrActive(self)) return false end
-        toolactive = a
+        CMgr_Active = a
         tool = LocalPlayer():GetTool("constraintmgr")
         if not tool then return end
         if a then tool:Deploy() else tool:Holster() end
@@ -81,12 +80,12 @@ if CLIENT then
         if #CMgr_Constraints == 0 then
             if CMgr_LastHover then
                 tool:SetStage(0)
-                CMgr_LastHover = nil
+                --CMgr_LastHover = nil
             end
             return
         end
         if CMgr_LastHover ~= CMgr_Hovered then
-            CMgr_Selected = 1
+            --CMgr_Selected = 1
             if CMgr_Hovered then tool:SetStage(1) else tool:SetStage(0) end
         end
     end
@@ -156,11 +155,11 @@ if SERVER then
         end)
     end)
     hook.Add("PlayerDroppedWeapon","constraintmgr_holsterdrop",function(ply,wep)
-        if wep:GetClass() == "gmod_tool" then ply:GetTool("constraintmgr"):Holster(ply) end
+        if wep:GetClass() == "gmod_tool" then ply:GetTool("constraintmgr"):Holster(true,ply) end
     end)
     hook.Add("PostPlayerDeath","constraintmgr_holsterdeath",function(ply)
         local wep = ply:GetActiveWeapon()
-        if wep:GetClass() == "gmod_tool" then ply:GetTool("constraintmgr"):Holster(ply) end
+        if wep:GetClass() == "gmod_tool" then ply:GetTool("constraintmgr"):Holster(true,ply) end
     end)
 end
 
@@ -210,24 +209,24 @@ function TOOL:Deploy()
         net.Start("constraintmgr_active") net.WriteBool(true) net.Send(self:GetOwner())
         return
     end
-    toolactive = true
+    CMgr_Active = true
     tool = self
-    CMgr.StartRender()
-    hook.Add("Think","constraintmgr_svthink",Think)
     CMgr.StartInput()
+    CMgr.StartRender()
+    hook.Add("Think","constraintmgr_hoverstage",Think)
 end
-function TOOL:Holster(ply)
+function TOOL:Holster(_,ply)
     if SERVER then -- fix for Holster not getting called on client when switching tools
         net.Start("constraintmgr_active") net.WriteBool(false) net.Send(self:GetOwner())
     end
     if CLIENT then
-        toolactive = false
+        CMgr_Active = false
         CMgr.StopInput()
+        hook.Remove("Think","constraintmgr_hoverstage")
     end
     if not ply and self:GetClientBool("persist") then return end
     if CLIENT then
         CMgr.StopRender()
-        hook.Remove("Think","constraintmgr_svthink")
     end
     self:Clear(ply)
 end
