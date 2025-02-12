@@ -32,6 +32,7 @@ CMgr.SendTable = function(ply,tbl) -- changed selection, send new table of const
     net.Send(ply)
 end
 CMgr.SendTableSingle = function(ply,tbl) -- send details of a single constraint
+    if not tbl then return end
     if tbl.material and tbl.Type ~= "Pulley" and tbl.LPos1 then
         tbl._curlength = tbl.Ent1:LocalToWorld(tbl.LPos1):Distance(tbl.Ent2:LocalToWorld(tbl.LPos2))
         --[[if not tbl.length and not tbl.Length1 then
