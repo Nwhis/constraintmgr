@@ -83,9 +83,9 @@ local Think = function() -- Calculating constraint worldpos and relative tooltip
                 if not IsValidW(w.Ent1) or not IsValidW(w.Ent2) then table.remove(CMgr_Constraints,k) break end
                 w.WPos1 = (w.Ent1:IsWorld() and w.LPos1 == vector_origin) and (w.Ent2:GetPos() + Vector(0,0,-32)) or w.Ent1:LocalToWorld(w.LPos1)
                 w.WPos2 = (w.Ent2:IsWorld() and w.LPos2 == vector_origin) and (w.Ent1:GetPos() + Vector(0,0,-32)) or w.Ent2:LocalToWorld(w.LPos2)
+                w.WPos1 = w.WPos1 and w.WPos1 or vector_origin
+                w.WPos2 = w.WPos2 and w.WPos2 or vector_origin
             end
-            w.WPos1 = w.WPos1 and w.WPos1 or vector_origin
-            w.WPos2 = w.WPos2 and w.WPos2 or vector_origin
         end
         if (not CMgr_FreezeRender or not v.WPos) and v.WPos1 then
             v.WPos = ((v.WPos1 + v.WPos2) * 0.5)
