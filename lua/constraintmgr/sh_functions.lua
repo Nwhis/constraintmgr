@@ -1,5 +1,5 @@
 CMgr.WritableValues = {
-    Ang = "a", angularlimit = "f",
+    Ang = "a", angularlimit = "f", addlength = "f",
     Bone1 = "i", Bone2 = "i", Bone4 = "i",
     LPos1 = "v", LPos2 = "v", LPos4 = "v",
     WPos2 = "v", WPos3 = "v",
