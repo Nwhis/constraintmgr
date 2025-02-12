@@ -167,7 +167,8 @@ local HUDPaint = function() -- Render tooltips
     CMgr_LastHover = CMgr_Hovered
     CMgr_Hovered = nil
     scr.x = ScrW() scr.y = ScrH()
-    cur.x,cur.y = input.GetCursorPos()
+    cur.x = scr.x * 0.5 cur.y = scr.y * 0.5
+    --cur.x,cur.y = input.GetCursorPos()
     for k,v in ipairs(CMgr_ConstraintGroups) do
         v = v[1]
         if not v.WPos then continue end
