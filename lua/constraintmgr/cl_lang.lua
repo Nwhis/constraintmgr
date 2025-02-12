@@ -1,0 +1,26 @@
+local t = "tool.constraintmgr."
+language.Add(t .. "name","Constraint Manager")
+language.Add(t .. "desc","View and modify constraints")
+language.Add(t .. "left_0","Select entity")
+language.Add(t .. "left_1","Inspect constraint")
+language.Add(t .. "right","Clear entity")
+language.Add(t .. "reload","Remove highlighted constraint")
+language.Add(t .. "alt","Alt: Freeze display")
+
+language.Add(t .. "var.persist","Keep constraints visible when switching tools")
+language.Add(t .. "var.parents","Show parent/child relations as constraints")
+language.Add(t .. "var.parents_nophys","Show children without physics")
+language.Add(t .. "var.sound","Enable tool sounds")
+language.Add(t .. "var.cull","Hide constraints far from crosshair")
+language.Add(t .. "var.overlap","Performance: Allow tooltip overlap")
+language.Add(t .. "tooltip.overlap","Checking this may improve FPS in extreme cases!")
+language.Add(t .. "var.scale_line","Line scale")
+language.Add(t .. "tooltip.scale_line","Only thin lines will be rendered if set to 0.")
+
+language.Add(t .. "notif.update_fail","Failed to update constraint!")
+language.Add(t .. "notif.update_success","Constraint updated!")
+language.Add(t .. "notif.update_cancel","Constraint update cancelled (no change)")
+
+language.Add(t .. "tooltip.fakeconstraint","Constraint info is unavailable for these,\nas they do not represent real constraints.")
+language.Add(t .. "tooltip.lengthpreset","Press up arrow to recall constraint's\ncurrent physical length")
+language.Add(t .. "tooltip.placeholderwarn","This value was calculated automatically.\nThings will break if this constraint is updated while unfrozen!")
