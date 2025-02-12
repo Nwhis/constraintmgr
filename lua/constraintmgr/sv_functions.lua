@@ -42,6 +42,9 @@ CMgr.SendTableSingle = function(ply,tbl) -- send details of a single constraint
     if tbl.amplitude then tbl.Length2 = tbl.Length1 + tbl.amplitude end
     if tbl.addlength then tbl.length = tbl.length + tbl.addlength tbl.addlength = nil end
     if not tbl.color and tbl.material then tbl.color = color_white end
+    if tbl.Ent1 and tbl.Ent1:GetBoneCount() == 0 then tbl.Bone1 = nil end
+    if tbl.Ent2 and tbl.Ent2:GetBoneCount() == 0 then tbl.Bone2 = nil end
+    if tbl.Ent4 and tbl.Ent4:GetBoneCount() == 0 then tbl.Bone4 = nil end
     tbl = CMgr.FilterValid(tbl)
     net.Start("constraintmgr_tbl_single")
     CMgr.WriteTable(tbl)

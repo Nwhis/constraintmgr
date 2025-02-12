@@ -191,7 +191,7 @@ local HUDPaint = function() -- Render tooltips
         if not mins then continue end
         local size = v[1].size
         v[1].render = true
-        if GetPlayerBool("cull") then
+        if GetPlayerBool("cull") and v[1].WPos then
             local s = v[1].WPos:ToScreen()
             center.x = s.x--mins.x + size.x*0.5
             center.y = s.y--mins.y + size.y*0.5
