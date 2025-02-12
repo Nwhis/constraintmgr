@@ -1,7 +1,7 @@
+AddCSLuaFile("constraintmgr/sh_functions.lua")
 AddCSLuaFile("constraintmgr/cl_functions.lua")
 AddCSLuaFile("constraintmgr/cl_render.lua")
 AddCSLuaFile("constraintmgr/cl_lang.lua")
-AddCSLuaFile("constraintmgr/sh_functions.lua")
 
 CMgr = CMgr or {}
 

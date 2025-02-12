@@ -2,7 +2,7 @@ local GetPlayerBool = CMgr.GetPlayerBool
 
 CMgr_Constraints = {}
 CMgr_ConstraintGroups = {}
-CMgr_Hovered = 0
+CMgr_Hovered = nil
 CMgr_LastHover = 0
 CMgr_Selected = 0
 
@@ -74,6 +74,7 @@ local PlayerBindPress = function(ply,bind,pressed) -- Detect clicks/scrolls
     if IsFirstTimePredicted() then return end -- Seems to break stuff if you check for (not IsFirstTimePredicted())
     if not pressed then return end
     if not CMgr_Hovered then return end
+    if not CMgr_ConstraintGroups then return end
     if bind == "+attack" then
         if #CMgr_ConstraintGroups[CMgr_Hovered] == 1 or CMgr_Selected == 0 then
             CMgr_Selected = 1
