@@ -148,7 +148,10 @@ if SERVER then
         end
         net.Start("constraintmgr_replace") net.WriteUInt(c.result,2) net.Send(ply)
         if c.result ~= 1 then return end
+        local waittick = 0
         hook.Add("Tick","cmgr_replaceupdate",function()
+            waittick = waittick + 1
+            if waittick < 2 then return end
             local t = ply:GetTool("constraintmgr")
             t:LeftClick({Entity = t:GetEnt(1)})
             hook.Remove("Tick","cmgr_replaceupdate")
