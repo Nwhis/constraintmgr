@@ -94,7 +94,7 @@ end
 function TOOL:Clear(ply)
     self:ClearObjects()
     if CLIENT then return end
-    ply = ply or self:GetOwner()
+    ply = ply and ply or self:GetOwner()
     ply.constraintmgr_selected = nil
     CMgr.SendTable(ply,{})
     hook.Remove("PreUndo","constraintmgr_undo_" .. ply:UserID())

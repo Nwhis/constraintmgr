@@ -5,6 +5,7 @@ AddCSLuaFile("constraintmgr/sh_functions.lua")
 
 CMgr = CMgr or {}
 
+include("constraintmgr/sh_functions.lua")
 if SERVER then
     include("constraintmgr/sv_functions.lua")
     include("constraintmgr/sv_constraints.lua")
@@ -14,4 +15,3 @@ if CLIENT then
     include("constraintmgr/cl_render.lua")
     include("constraintmgr/cl_lang.lua")
 end
-include("constraintmgr/sh_functions.lua")
