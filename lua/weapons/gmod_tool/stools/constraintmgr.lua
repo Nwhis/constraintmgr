@@ -162,7 +162,7 @@ if SERVER then
     end)
     hook.Add("PostPlayerDeath","constraintmgr_holsterdeath",function(ply)
         local wep = ply:GetActiveWeapon()
-        if wep:GetClass() == "gmod_tool" then ply:GetTool("constraintmgr"):Holster(true,ply) end
+        if IsValid(wep) and wep:GetClass() == "gmod_tool" then ply:GetTool("constraintmgr"):Holster(true,ply) end
     end)
 end
 
